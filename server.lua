@@ -32,7 +32,8 @@ local function make_otp(deviceid, clientid, operation, key, nonce1)
   local aes = cipher.new("AES-128-CBC")
   local iv = rand.bytes(16)
   aes:encrypt(key, iv, false)
-  return b64.encode(iv .. aes:final(plain))
+  local ivaes = iv .. aes:final(plain)
+  return b64.encode(ivaes .. hmac.new(key, "sha256"):final(ivaes))
 end
 
 local function authorize_operation_handler(stream, res_headers)
