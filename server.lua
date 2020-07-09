@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env lua5.3
 
 local port = 8888
 local clientid = "client1"
@@ -70,7 +70,7 @@ end
 
 local myserver =
   assert(http_server.listen {
-           host = "localhost";
+           host = "0.0.0.0";
            port = port;
            cq = cq;
            onstream = function(myserver, stream)
