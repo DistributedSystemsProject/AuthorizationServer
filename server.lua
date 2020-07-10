@@ -19,13 +19,11 @@ local fmt = string.format
 
 local cq = cqueues.new()
 
-local function make_otp(deviceid, clientid, operation, key, nonce1)
+local function make_otp(operation, key, nonce1)
   local t = {
-    -- device_id = deviceid,
-    -- client_id = clientid,
-    operation = operation,
-    nonce1 = nonce1,
-    nonce2 = tostring(string.unpack("L", rand.bytes(8)))
+    O = operation,
+    N1 = nonce1,
+    N2 = tostring(string.unpack("L", rand.bytes(8)))
   }
   local plain = cjson.encode(t)
   plain = plain .. string.rep(' ', 16 - (#plain % 16))
@@ -61,8 +59,9 @@ local function authorize_operation_handler(stream, res_headers)
   aes:decrypt(devicekey, iv, false)
   local message1 = aes:final(ciphertext)
   local message1 = assert(cjson.decode(message1), "invalid device message")
-  local nonce1 = message1.nonce
-  local otp = make_otp(deviceid, clientid, operation, devicekey, nonce1)
+  local nonce1 = message1.N1
+  assert(nonce1, "Nonce 1 not provided")
+  local otp = make_otp(reqoperation, devicekey, nonce1)
   local t = { success = true, otp = otp }
   assert(stream:write_headers(res_headers, false))
   assert(stream:write_chunk(cjson.encode(t), true))
