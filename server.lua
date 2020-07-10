@@ -21,11 +21,11 @@ local cq = cqueues.new()
 
 local function make_otp(deviceid, clientid, operation, key, nonce1)
   local t = {
-    device_id = deviceid,
-    client_id = clientid,
+    -- device_id = deviceid,
+    -- client_id = clientid,
     operation = operation,
     nonce1 = nonce1,
-    nonce3 = tostring(string.unpack("L", rand.bytes(8)))
+    nonce2 = tostring(string.unpack("L", rand.bytes(8)))
   }
   local plain = cjson.encode(t)
   plain = plain .. string.rep(' ', 16 - (#plain % 16))
