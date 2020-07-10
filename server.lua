@@ -1,9 +1,9 @@
 #!/usr/bin/env lua5.3
 
 local port = 8888
-local clientid = "client1"
+local clientid = "1234567890client"
 local clientpass = "clientpass"
-local deviceid = "device1"
+local deviceid = "1234567890device"
 local devicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
 devicekey = string.pack(string.rep("B",16), table.unpack(devicekey))
 
