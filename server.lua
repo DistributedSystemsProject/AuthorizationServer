@@ -21,7 +21,7 @@ local cq = cqueues.new()
 
 local function make_otp(operation, key, nonce1)
   local t = {
-    O = operation,
+    OP = operation,
     N1 = nonce1,
     N2 = tostring(string.unpack("L", rand.bytes(8)))
   }
