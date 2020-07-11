@@ -1,11 +1,7 @@
 #!/usr/bin/env lua5.3
 
-local port = 8888
-local clientid = "1234567890client"
-local clientpass = "clientpass"
-local deviceid = "1234567890device"
-local devicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
-devicekey = string.pack(string.rep("B",16), table.unpack(devicekey))
+local tlscertpath = "/tmp/tls/cert.pem"
+local tlskeypath = "/tmp/tls/key.pem"
 
 local cqueues = require "cqueues"
 local http_server = require "http.server"
@@ -14,8 +10,35 @@ local cjson = require "cjson.safe"
 local cipher = require "openssl.cipher"
 local rand = require "openssl.rand"
 local hmac = require "openssl.hmac"
+local sslcontext = require "openssl.ssl.context"
+local sslpkey = require "openssl.pkey"
+local x509 = require "openssl.x509"
 local b64 = require "b64"
 local fmt = string.format
+
+local usetls = true
+local tlsctx = nil
+
+if usetls then
+  tlsctx = sslcontext.new("TLS", true)
+  local keyf = assert(io.open(tlskeypath))
+  local key = keyf:read("a")
+  keyf:close()
+  local certf = assert(io.open(tlscertpath))
+  local cert = certf:read("a")
+  certf:close()
+  local cert = x509.new(cert, "PEM")
+  tlsctx:setCertificate(cert)
+  local pkey = sslpkey.new(key, "PEM")
+  tlsctx:setPrivateKey(pkey)
+end
+
+local port = 8888
+local clientid = "1234567890client"
+local clientpass = "clientpass"
+local deviceid = "1234567890device"
+local devicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
+devicekey = string.pack(string.rep("B",16), table.unpack(devicekey))
 
 local cq = cqueues.new()
 
@@ -69,6 +92,8 @@ end
 
 local myserver =
   assert(http_server.listen {
+           tls = usetls;
+           ctx = tlsctx;
            host = "0.0.0.0";
            port = port;
            cq = cq;
