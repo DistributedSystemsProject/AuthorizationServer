@@ -1,7 +1,7 @@
 #!/usr/bin/env lua5.3
 
-local tlscertpath = "/tmp/tls/cert.pem"
-local tlskeypath = "/tmp/tls/key.pem"
+local tlscertpath = "/etc/letsencrypt/live/minecrime.it/fullchain.pem"
+local tlskeypath = "/etc/letsencrypt/live/minecrime.it/privkey.pem"
 
 local cqueues = require "cqueues"
 local http_server = require "http.server"
