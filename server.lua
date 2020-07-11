@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.3
 
-local tlscertpath = "fullchain.pem"
+local tlschainpath = "fullchain.pem"
 local tlskeypath = "privkey.pem"
 
 local cqueues = require "cqueues"
@@ -13,6 +13,7 @@ local hmac = require "openssl.hmac"
 local sslcontext = require "openssl.ssl.context"
 local sslpkey = require "openssl.pkey"
 local x509 = require "openssl.x509"
+local x509chain = require "openssl.x509.chain"
 local b64 = require "b64"
 local fmt = string.format
 
@@ -24,11 +25,18 @@ if usetls then
   local keyf = assert(io.open(tlskeypath))
   local key = keyf:read("a")
   keyf:close()
-  local certf = assert(io.open(tlscertpath))
-  local cert = certf:read("a")
-  certf:close()
-  local cert = x509.new(cert, "PEM")
-  tlsctx:setCertificate(cert)
+  local chainf = assert(io.open(tlschainpath))
+  local chainstr = chainf:read("a")
+  chainf:close()
+  local chain = x509chain.new()
+  local i = 1
+  while true do
+    local ipos = chainstr:find("-----BEGIN CERTIFICATE-----\n", i)
+    if not ipos then break end
+    local i,epos = assert(chainstr:find("-----END CERTIFICATE-----\n", i))
+    chain.add(x509.new(string.sub(chainstr, ipos, epos)))
+  end
+  tlsctx:setCertificateChain(chain)
   local pkey = sslpkey.new(key, "PEM")
   tlsctx:setPrivateKey(pkey)
 end
