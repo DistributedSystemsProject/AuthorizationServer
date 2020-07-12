@@ -36,7 +36,6 @@ if usetls then
     if not ipos then break end
     _,i = assert(chainstr:find("-----END CERTIFICATE-----", ipos, true))
     local ccert = x509.new(string.sub(chainstr, ipos, i))
-    print(ccert:digest())
     if not cert then
       cert = ccert
     else
