@@ -1,8 +1,5 @@
 #!/usr/bin/env lua5.3
 
-local tlschainpath = "fullchain.pem"
-local tlskeypath = "privkey.pem"
-
 local cqueues = require "cqueues"
 local http_server = require "http.server"
 local http_headers = require "http.headers"
@@ -18,6 +15,16 @@ local b64 = require "b64"
 local fmt = string.format
 
 local usetls = true
+local tlschainpath = "fullchain.pem"
+local tlskeypath = "privkey.pem"
+local port = 8888
+local clientid = "1234567890client"
+local clientpass = "clientpass"
+local deviceid = "1234567890device"
+local devicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
+devicekey = string.pack(string.rep("B",16), table.unpack(devicekey))
+
+local cq = cqueues.new()
 local tlsctx = nil
 
 if usetls then
@@ -48,15 +55,6 @@ if usetls then
   local pkey = sslpkey.new(key, "PEM")
   tlsctx:setPrivateKey(pkey)
 end
-
-local port = 8888
-local clientid = "1234567890client"
-local clientpass = "clientpass"
-local deviceid = "1234567890device"
-local devicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
-devicekey = string.pack(string.rep("B",16), table.unpack(devicekey))
-
-local cq = cqueues.new()
 
 local function make_otp(operation, key, nonce1)
   local t = {
