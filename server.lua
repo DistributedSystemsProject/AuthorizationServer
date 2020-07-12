@@ -34,9 +34,9 @@ if usetls then
   while true do
     local ipos = chainstr:find("-----BEGIN CERTIFICATE-----", i, true)
     if not ipos then break end
-    local epos
-    i,epos = assert(chainstr:find("-----END CERTIFICATE-----", ipos, true))
-    local ccert = x509.new(string.sub(chainstr, ipos, epos))
+    _,i = assert(chainstr:find("-----END CERTIFICATE-----", ipos, true))
+    local ccert = x509.new(string.sub(chainstr, ipos, i))
+    print(ccert:digest())
     if not cert then
       cert = ccert
     else
