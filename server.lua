@@ -42,6 +42,7 @@ if usetls then
       chain:add(ccert)
     end
   end
+  assert(cert, "No certificate found in: " .. tlschainpath)
   tlsctx:setCertificate(cert)
   tlsctx:setCertificateChain(chain)
   local pkey = sslpkey.new(key, "PEM")
