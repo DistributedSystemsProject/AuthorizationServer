@@ -29,14 +29,21 @@ if usetls then
   local chainstr = chainf:read("a")
   chainf:close()
   local chain = x509chain.new()
+  local cert
   local i = 1
   while true do
     local ipos = chainstr:find("-----BEGIN CERTIFICATE-----", i, true)
     if not ipos then break end
     local epos
     i,epos = assert(chainstr:find("-----END CERTIFICATE-----", ipos, true))
-    chain:add(x509.new(string.sub(chainstr, ipos, epos)))
+    local ccert = x509.new(string.sub(chainstr, ipos, epos))
+    if not cert then
+      cert = ccert
+    else
+      chain:add(ccert)
+    end
   end
+  tlsctx:setCertificate(cert)
   tlsctx:setCertificateChain(chain)
   local pkey = sslpkey.new(key, "PEM")
   tlsctx:setPrivateKey(pkey)
