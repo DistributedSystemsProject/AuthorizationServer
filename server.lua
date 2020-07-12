@@ -60,7 +60,7 @@ local function make_otp(operation, key, nonce1)
   local t = {
     OP = operation,
     N1 = nonce1,
-    N2 = tostring(string.unpack("L", rand.bytes(8)))
+    N2 = string.format("%u", (string.unpack("I", rand.bytes(4))))
   }
   local plain = cjson.encode(t)
   plain = plain .. string.rep(' ', 16 - (#plain % 16))
