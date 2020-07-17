@@ -80,7 +80,7 @@ local function auth_encrypt(plain, key)
   return ivaes .. hmac.new(key, "sha256"):final(ivaes)
 end
 
-local function make_confirmation(N3)
+local function make_confirmation(N3, key)
   local t = {
     N3 = N3
   }
@@ -191,7 +191,7 @@ local function confirm_operation_handler(stream, res_headers)
     return client_error(stream, res_headers)
   end
   local ticketdata = get_ticketdata(ticket)
-  if not get_ticket(ticketdata) then
+  if not ticketdata then
     res_headers:upsert(":status", "403")
     assert(stream:write_headers(res_headers, true))
     return
@@ -202,7 +202,7 @@ local function confirm_operation_handler(stream, res_headers)
   local N2 = devjson.N2
   local N3 = devjson.N3
   assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
-  local confirmation = make_confirmation(N3)
+  local confirmation = make_confirmation(N3, key)
   local body = cjson.encode({ success = true, load = confirmation })
   res_headers:append(":status", "200")
   res_headers:append("content-type", "application/json")
