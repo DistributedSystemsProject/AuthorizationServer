@@ -81,9 +81,7 @@ local function auth_encrypt(plain, key)
 end
 
 local function make_confirmation(N3, key)
-  local t = {
-    N3 = N3
-  }
+  local t = {N3 = N3}
   return b64.encode(auth_encrypt(cjson.encode(t), key))
 end
 
@@ -129,18 +127,18 @@ end
 
 local function record_authorization(ticket, N2, clientid, deviceid, operation)
   tickets[ticket] = {
-    N2 = N2, clientid = clientid, deviceid = deviceid, operation = operation, ts = os.time()
+    N2 = N2, clientid = clientid, deviceid = deviceid, operation = operation
   }
+  cq:wrap(function()
+      cqueues.sleep(120)
+      tickets[ticket] = nil
+  end)
 end
 
 local function get_ticketdata(ticket)
-  local ticketdata = tickets[ticket]
-  if ticketdata and (os.time() - ticketdata.ts) > 120 then
-    return nil
-  else
-    return ticketdata
-  end
+  return tickets[ticket]
 end
+
 local function authorize_operation_handler(stream, res_headers)
   local body = stream:get_body_as_string()
   if not body then return client_error(stream, res_headers) end
