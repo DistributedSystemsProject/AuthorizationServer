@@ -9,6 +9,7 @@ local cjson = require "cjson.safe"
 local cipher = require "openssl.cipher"
 local rand = require "openssl.rand"
 local hmac = require "openssl.hmac"
+local digest = require "openssl.digest"
 local sslcontext = require "openssl.ssl.context"
 local sslpkey = require "openssl.pkey"
 local x509 = require "openssl.x509"
@@ -17,6 +18,7 @@ local b64 = require "b64"
 local fmt = string.format
 
 local usetls = arg[1] ~= "dev"
+local oplogpath = "operations.log"
 local tlschainpath = "fullchain.pem"
 local tlskeypath = "privkey.pem"
 local port = 8888
@@ -158,6 +160,32 @@ local function get_ticketdata(ticket)
   return tt
 end
 
+local function log_operation(td)
+  local log = os.time().." cli: "..td.clientid.."; dev: "..td.deviceid.."; op: "..td.operation
+  redis:call("rpush", "oplog", log)
+end
+
+local function notarize_hash(hash)
+  -- to be implemented
+end
+
+-- thread that every 5 minutes saves a block of logs to disk and its hash on the blockchain
+local function log_notarizer()
+  while true do
+    cqueues.sleep(300)
+    local all = redis:call("lrange", "oplog", "0", "-1")
+    if #all > 1 then
+      local block = "###BEGIN_BLOCK\n"..table.concat(all, "\n").."\n###END_BLOCK\n"
+      local f = io.open(oplogpath, "a")
+      f:write(block)
+      f:close()
+      notarize_hash(digest.new("sha256"):final(block))
+      redis:call("del", "oplog")
+    end
+  end
+end
+cq:wrap(log_notarizer)
+
 local function authorize_operation_handler(stream, res_headers)
   local body = stream:get_body_as_string()
   if not body then return client_error(stream, res_headers) end
@@ -219,6 +247,7 @@ local function confirm_operation_handler(stream, res_headers)
   local N2 = devjson.N2
   local N3 = devjson.N3
   assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
+  log_operation(ticketdata)
   local confirmation = make_confirmation(N3, key)
   local body = cjson.encode({ success = true, load = confirmation })
   res_headers:append(":status", "200")
