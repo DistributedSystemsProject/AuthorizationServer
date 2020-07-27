@@ -4,7 +4,7 @@ The authorization server is used to authenticate the user to send operations to 
 ![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/master/protocol.png)
 
 
-# Requeriments
+# Requirements
 
 Lua 5.3, with the following libraries:
 
