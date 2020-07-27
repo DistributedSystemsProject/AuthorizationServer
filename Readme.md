@@ -4,7 +4,7 @@ The authorization server is used to authenticate the user to send operations to 
 ![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/master/protocol.png)
 
 
-# Requeriments
+# Requirements
 
 Lua 5.3, with the following libraries:
 
@@ -46,4 +46,7 @@ docker run -d redis:alpine
 docker run -d --publish 8888:8888 --link YOUR_REDIS_DOCKER_CONTAINER_ID:redisserv --mount type=bind,source="$PWD",target=/opt/server xoich/authserver
 ```
 
+# Logging
 
+The server logs operations on the file `operations.log`
+Logs are divided in blocks saved every five minutes. The blocks `sha256` cryptographic hash can be used to be stored on the blockchain (for example Ethereum).
