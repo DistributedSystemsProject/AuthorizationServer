@@ -23,10 +23,21 @@ Send an http POST to `/authorize-operation` on port 8888, header `content-type: 
 
 The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}`
 
+## It is safe to regenerate the key, before using it
+
+
 # Run on Docker
 
-Cd into the directory with the repository then run:
+Use the command "cd" into the directory with the repository, then run:
 
 ```
-docker run -d --publish 8888:8888 --mount readonly,type=bind,source="$PWD",target=/opt/server xoich/authserver
+docker run -d --publish 8888:8888 --mount type=bind,source="$PWD",target=/opt/server xoich/authserver
 ```
+
+If you want to save log files for Ethereum (Blockchain), through a Redis DB, create another Docker container:
+```
+docker run -d redis:alpine
+docker run -d --publish 8888:8888 --link YOUR_REDIS_DOCKER_CONTAINER_ID:redisserv --mount type=bind,source="$PWD",target=/opt/server xoich/authserver
+```
+
+
