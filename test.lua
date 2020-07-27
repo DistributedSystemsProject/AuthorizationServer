@@ -1,4 +1,5 @@
 #!/usr/bin/env lua
+local host = arg[1]
 
 local req_timeout = 10
 
@@ -53,7 +54,7 @@ local bodyt = {
     load = bload
 }
 
-local req = request.new_from_uri("http://127.0.0.1:8888/authorize-operation")
+local req = request.new_from_uri("https://" .. host .. "/authorize-operation")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
 req:set_body(cjson.encode(bodyt))
@@ -83,7 +84,7 @@ local bodyt = {
   load = bload
 }
 
-local req = request.new_from_uri("http://127.0.0.1:8888/confirm-operation")
+local req = request.new_from_uri("https://" .. host .. "/confirm-operation")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
 req:set_body(cjson.encode(bodyt))

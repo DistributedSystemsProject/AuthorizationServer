@@ -17,7 +17,7 @@ Lua 5.3, with the following libraries:
 
 1) Start the server: `./server.lua`
 
-2) Send an HTTP POST to `/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
+2) Send an HTTPS POST to `/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
 `client_id`, `client_pass`, and `device_id` must be as in the example, `operation` can be `lock` or `unlock`.
 
@@ -25,18 +25,22 @@ The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0x
 
 3) After you receive the ticket (cookie) and a new load, send another HTTP POST, this time to `/confirm-operation` like in the file `example_second_request.json`
 
-## It is safe to regenerate the key, before using it
+It is safe to regenerate the key, before using it.
 
+# Testing the server
+
+It is possible to test the server with the file `test.lua`, it will go through the entire protocol and generate a log on the server.
+
+```
+lua test.lua host
+```
+
+Where `host` is the server hostname and optional port number.
 
 # Run on Docker
 
 Use the command "cd" into the directory with the repository, then run:
 
-```
-docker run -d --publish 8888:8888 --mount type=bind,source="$PWD",target=/opt/server xoich/authserver
-```
-
-If you want to save log files for Ethereum (Blockchain), through a Redis DB, create another Docker container:
 ```
 docker run -d redis:alpine
 docker run -d --publish 8888:8888 --link YOUR_REDIS_DOCKER_CONTAINER_ID:redisserv --mount type=bind,source="$PWD",target=/opt/server xoich/authserver
