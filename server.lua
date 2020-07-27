@@ -1,12 +1,15 @@
 #!/usr/bin/env lua5.3
 
 local cqueues = require "cqueues"
+local lredis = require "lredis.cqueues"
+local resolver = require 'cqueues.dns.resolver'
 local http_server = require "http.server"
 local http_headers = require "http.headers"
 local cjson = require "cjson.safe"
 local cipher = require "openssl.cipher"
 local rand = require "openssl.rand"
 local hmac = require "openssl.hmac"
+local digest = require "openssl.digest"
 local sslcontext = require "openssl.ssl.context"
 local sslpkey = require "openssl.pkey"
 local x509 = require "openssl.x509"
@@ -15,19 +18,36 @@ local b64 = require "b64"
 local fmt = string.format
 
 local usetls = arg[1] ~= "dev"
+local oplogpath = "operations.log"
 local tlschainpath = "fullchain.pem"
 local tlskeypath = "privkey.pem"
 local port = 8888
 local cq = cqueues.new()
 local tlsctx = nil
 
-local tickets = {}
-
 local testclientid = "1234567890client"
 local testclientpass = "clientpass"
 local testdeviceid = "1234567890device"
 local testdevicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
 testdevicekey = string.pack(string.rep("B",16), table.unpack(testdevicekey))
+
+local redisaddr
+do
+  local r = resolver.new({lookup = {"file"}})
+  local packet = r:query("redisserv")
+  assert(packet, "Could not find redis server address")
+  local section = packet:grep({section = "ANSWER"})()
+  redisaddr = section:addr()
+end
+local redis = lredis.connect_tcp(redisaddr)
+-- load test db items
+if redis:call("get", "testdbitems") ~= "v3" then
+  redis:call("flushall")
+  redis:call("set", "clientpass:"..testclientid, testclientpass)
+  redis:call("set", "devkeys:"..testdeviceid, testdevicekey)
+  redis:call("sadd", "cldevops:"..testclientid..":"..testdeviceid, "lock", "unlock")
+  redis:call("set", "testdbitems", "v3")
+end
 
 if usetls then -- setup TLS
   tlsctx = sslcontext.new("TLS", true)
@@ -109,35 +129,62 @@ local function safe_decode_load(dload)
 end
 
 local function authenticate_client(clientid, clientpass)
-  return clientpass == testclientpass and clientid == testclientid
+  return clientpass == redis:call("get", "clientpass:"..clientid)
 end
 
 local function authorize_client(clientid, deviceid, operation)
-  return clientid == testclientid and deviceid == testdeviceid and
-    (operation == "lock" or operation == "unlock")
+  local t = redis:call("smembers", "cldevops:"..clientid..":"..deviceid)
+  for _,op in ipairs(t) do
+    if op == operation then
+      return true
+    end
+  end
+  return false
 end
 
 local function get_device_key(deviceid)
-  if deviceid == testdeviceid then
-    return testdevicekey
-  else
-    error("deviceid not found")
-  end
+  return redis:call("get", "devkeys:"..deviceid)
 end
 
 local function record_authorization(ticket, N2, clientid, deviceid, operation)
-  tickets[ticket] = {
-    N2 = N2, clientid = clientid, deviceid = deviceid, operation = operation
-  }
-  cq:wrap(function()
-      cqueues.sleep(120)
-      tickets[ticket] = nil
-  end)
+  redis:call("hmset", ticket, "N2", N2, "clientid", clientid, "deviceid", deviceid, "operation", operation)
+  redis:call("expire", ticket, "120")
 end
 
 local function get_ticketdata(ticket)
-  return tickets[ticket]
+  local t = redis:call("hgetall", ticket)
+  local tt = {}
+  for i=1,#t,2 do
+    tt[t[i]] = t[i+1]
+  end
+  return tt
 end
+
+local function log_operation(td)
+  local log = os.time().." cli: "..td.clientid.."; dev: "..td.deviceid.."; op: "..td.operation
+  redis:call("rpush", "oplog", log)
+end
+
+local function notarize_hash(hash)
+  -- to be implemented
+end
+
+-- thread that every 5 minutes saves a block of logs to disk and its hash on the blockchain
+local function log_notarizer()
+  while true do
+    cqueues.sleep(300)
+    local all = redis:call("lrange", "oplog", "0", "-1")
+    if #all > 1 then
+      local block = "###BEGIN_BLOCK\n"..table.concat(all, "\n").."\n###END_BLOCK\n"
+      local f = io.open(oplogpath, "a")
+      f:write(block)
+      f:close()
+      notarize_hash(digest.new("sha256"):final(block))
+      redis:call("del", "oplog")
+    end
+  end
+end
+cq:wrap(log_notarizer)
 
 local function authorize_operation_handler(stream, res_headers)
   local body = stream:get_body_as_string()
@@ -163,7 +210,7 @@ local function authorize_operation_handler(stream, res_headers)
     return
   end
   local binload = safe_decode_load(deviceload)
-  local key = get_device_key(deviceid)
+  local key = assert(get_device_key(deviceid))
   local devjson = assert(cjson.decode(auth_decrypt(binload, key)))
   local N1 = devjson.N1
   assert(N1)
@@ -200,6 +247,7 @@ local function confirm_operation_handler(stream, res_headers)
   local N2 = devjson.N2
   local N3 = devjson.N3
   assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
+  log_operation(ticketdata)
   local confirmation = make_confirmation(N3, key)
   local body = cjson.encode({ success = true, load = confirmation })
   res_headers:append(":status", "200")
