@@ -1,3 +1,9 @@
+# Authorization Server
+
+The authorization server is used to authenticate the user to send operations to the Locker Device, according to this protocol:
+![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/master/protocol.png)
+
+
 # Requeriments
 
 Lua 5.3, with the following libraries:
