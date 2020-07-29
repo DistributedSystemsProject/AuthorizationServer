@@ -3,6 +3,9 @@
 The authorization server is used to authenticate the user to send operations to the Locker Device, according to this protocol:
 ![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/master/protocol.png)
 
+1) Device and Client are supposed to be already paired via Bluetooth
+2) EKd,s (AES encryption 128-bit CBC, between Device and Server, including HMAC SHA 256-bit)
+3) EKc,s (HTTPS connection, authorized through idClient and clientPassword)
 
 # Requirements
 
