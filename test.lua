@@ -54,7 +54,7 @@ local bodyt = {
     load = bload
 }
 
-local req = request.new_from_uri("https://" .. host .. "/authorize-operation")
+local req = request.new_from_uri(host .. "/authorize-operation")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
 req:set_body(cjson.encode(bodyt))
@@ -77,14 +77,13 @@ assert(reply1dev.N1 == N1)
 assert(reply1dev.OP == "unlock")
 
 
-local N3 = "1319131"
-local bload = (b64.encode(auth_encrypt(cjson.encode{N2 = reply1dev.N2, N3 = N3}, testdevicekey)))
+local bload = (b64.encode(auth_encrypt(cjson.encode{N2 = reply1dev.N2, RES=true}, testdevicekey)))
 local bodyt = {
   ticket = ticket,
   load = bload
 }
 
-local req = request.new_from_uri("https://" .. host .. "/confirm-operation")
+local req = request.new_from_uri(host .. "/result")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
 req:set_body(cjson.encode(bodyt))
@@ -101,5 +100,5 @@ if not body and err then
 end
 
 local reply2 = cjson.decode(body)
-local reply1dev = cjson.decode(auth_decrypt(safe_decode_load(reply2.load), testdevicekey))
-assert(reply1dev.N3 == N3)
+
+assert(reply2.success == true)

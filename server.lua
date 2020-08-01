@@ -100,11 +100,6 @@ local function auth_encrypt(plain, key)
   return ivaes .. hmac.new(key, "sha256"):final(ivaes)
 end
 
-local function make_confirmation(N3, key)
-  local t = {N3 = N3}
-  return b64.encode(auth_encrypt(cjson.encode(t), key))
-end
-
 local function make_authopmsg(operation, key, N1, N2)
   local t = {
     OP = operation,
@@ -225,7 +220,7 @@ local function authorize_operation_handler(stream, res_headers)
   assert(stream:write_chunk(body, true))
 end
 
-local function confirm_operation_handler(stream, res_headers)
+local function result_handler(stream, res_headers)
   local body = stream:get_body_as_string()
   if not body then return client_error(stream, res_headers) end
   local json = cjson.decode(body)
@@ -245,11 +240,12 @@ local function confirm_operation_handler(stream, res_headers)
   local key = get_device_key(ticketdata.deviceid)
   local devjson = assert(cjson.decode(auth_decrypt(binload, key)))
   local N2 = devjson.N2
-  local N3 = devjson.N3
+  local RES = devjson.RES
   assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
-  log_operation(ticketdata)
-  local confirmation = make_confirmation(N3, key)
-  local body = cjson.encode({ success = true, load = confirmation })
+  if RES then
+    log_operation(ticketdata)
+  end
+  local body = cjson.encode({ success = RES })
   res_headers:append(":status", "200")
   res_headers:append("content-type", "application/json")
   assert(stream:write_headers(res_headers, false))
@@ -276,9 +272,9 @@ local myserver =
              if req_headers:get(":path") == "/authorize-operation" and
              req_headers:get "content-type" == "application/json" then
                return authorize_operation_handler(stream, res_headers)
-             elseif req_headers:get(":path") == "/confirm-operation" and
+             elseif req_headers:get(":path") == "/result" and
              req_headers:get "content-type" == "application/json" then
-               return confirm_operation_handler(stream, res_headers)
+               return result_handler(stream, res_headers)
              else
                res_headers:append(":status", "404")
                assert(stream:write_headers(res_headers, true))
