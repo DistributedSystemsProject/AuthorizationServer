@@ -1,7 +1,7 @@
 # Authorization Server
 
 The authorization server is used to authenticate the user to send operations to the Locker Device, according to this protocol:
-![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/master/protocol.png)
+![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/old/Protocol.png)
 
 1) Device and Client are supposed to be already paired via Bluetooth
 2) EKd,s (AES encryption 128-bit CBC, between Device and Server, including HMAC SHA 256-bit)
@@ -26,7 +26,7 @@ Lua 5.3, with the following libraries:
 
 The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}`
 
-3) After you receive the ticket (cookie) and a new load, send another HTTP POST, this time to `/confirm-operation` like in the file `example_second_request.json`
+3) After you receive the ticket (cookie) plus the second load, send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
 
 It is safe to regenerate the key, before using it.
 
