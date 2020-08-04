@@ -23,7 +23,7 @@ Lua 5.3, with the following libraries:
 
 The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}`
 
-3) After you receive the ticket (cookie) and a new load, send another HTTP POST, this time to `/confirm-operation` like in the file `example_second_request.json`
+3) After you receive the ticket (cookie), send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
 
 It is safe to regenerate the key, before using it.
 
