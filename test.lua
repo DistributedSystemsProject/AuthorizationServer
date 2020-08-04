@@ -70,6 +70,7 @@ local bodyt = {
 local req = request.new_from_uri(host .. "/exchange")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
+print("// Key Exchange Request:") print(cjson.encode(bodyt)) print()
 req:set_body(cjson.encode(bodyt))
 
 local headers, stream = req:go(req_timeout)
@@ -83,6 +84,7 @@ if not body and err then
 	os.exit(1)
 end
 
+print("// Server answer:") print(body) print()
 local replyex = cjson.decode(body)
 local ticket = replyex.ticket
 local bload = b64.decode(replyex.load)
@@ -104,6 +106,7 @@ local bodyt = {
 local req = request.new_from_uri(host .. "/authorize-operation")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
+print("// Authorize Operation Request:") print(cjson.encode(bodyt)) print()
 req:set_body(cjson.encode(bodyt))
 
 local headers, stream = req:go(req_timeout)
@@ -117,6 +120,7 @@ if not body and err then
 	os.exit(1)
 end
 
+print("// Server answer:") print(body) print()
 local reply1 = cjson.decode(body)
 local reply1dev = cjson.decode(auth_decrypt(safe_decode_load(reply1.load), key2))
 assert(reply1dev.N1 == N1)
@@ -131,6 +135,7 @@ local bodyt = {
 local req = request.new_from_uri(host .. "/result")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
+print("// Send Result Request:") print(cjson.encode(bodyt)) print()
 req:set_body(cjson.encode(bodyt))
 
 local headers, stream = req:go(req_timeout)
@@ -144,6 +149,7 @@ if not body and err then
 	os.exit(1)
 end
 
+print("// Server answer:") print(body) print()
 local reply2 = cjson.decode(body)
 
 assert(reply2.success == true)
