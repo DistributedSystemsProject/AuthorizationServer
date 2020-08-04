@@ -15,6 +15,7 @@ local sslpkey = require "openssl.pkey"
 local x509 = require "openssl.x509"
 local x509chain = require "openssl.x509.chain"
 local b64 = require "b64"
+local uECC = require("uECC").secp192r1()
 local fmt = string.format
 
 local usetls = arg[1] ~= "dev"
@@ -28,8 +29,16 @@ local tlsctx = nil
 local testclientid = "1234567890client"
 local testclientpass = "clientpass"
 local testdeviceid = "1234567890device"
-local testdevicekey = {0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}
-testdevicekey = string.pack(string.rep("B",16), table.unpack(testdevicekey))
+function xtb(t) return string.pack(string.rep("B",#t), table.unpack(t)) end
+local testdevicepk = xtb { 0xb9, 0x41, 0x5d, 0x30, 0x00, 0x30, 0x1a, 0x83, 0x62, 0x60, 0x22, 0x30, 0x65, 0xcd, 0x21, 0xd9, 0xd7, 0x3a, 0x90, 0x43, 0x2b, 0xa6, 0x54, 0xe6, 0xa1, 0x0a, 0x3e, 0xb7, 0xeb, 0x8f, 0x71, 0x76, 0xbe, 0xca, 0xa0, 0x5d, 0x89, 0xb0, 0xb9, 0x4b, 0x85, 0x2f, 0xce, 0xd2, 0x75, 0x8e, 0x7b, 0x53 }
+local testserverpk = xtb { 0xdc, 0x27, 0xa5, 0x67, 0x1d, 0xcb, 0x00, 0x0d, 0xc4, 0x1b, 0x99, 0x96, 0x84, 0x0b, 0xb3, 0xc0, 0x08, 0xe2, 0x91, 0x08, 0xd1, 0x59, 0x49, 0x40, 0x1f, 0x05, 0x7a, 0x28, 0xe0, 0x46, 0x81, 0x7e, 0xfa, 0xcc, 0x67, 0x90, 0xf0, 0x5d, 0xef, 0xfd, 0x13, 0x78, 0xf5, 0xaf, 0x2d, 0xd8, 0xa9, 0x21 }
+local testserversk = xtb { 0xaa, 0x2e, 0x99, 0xf6, 0xba, 0xfe, 0x95, 0xdc, 0xd5, 0x9d, 0x3c, 0x94, 0xe4, 0x9e, 0xd0, 0xb7, 0xbf, 0xb3, 0xde, 0x1b, 0xb8, 0x04, 0x7b, 0x2a }
+
+function string.tohex(str)
+    return (str:gsub('.', function (c)
+        return string.format('%02X', string.byte(c))
+    end))
+end
 
 local redisaddr
 do
@@ -41,10 +50,10 @@ do
 end
 local redis = lredis.connect_tcp(redisaddr)
 -- load test db items
-if redis:call("get", "testdbitems") ~= "v3" then
+if redis:call("get", "testdbitems") ~= "v4" then
   redis:call("flushall")
   redis:call("set", "clientpass:"..testclientid, testclientpass)
-  redis:call("set", "devkeys:"..testdeviceid, testdevicekey)
+  redis:call("set", "devkeys:"..testdeviceid, testdevicepk)
   redis:call("sadd", "cldevops:"..testclientid..":"..testdeviceid, "lock", "unlock")
   redis:call("set", "testdbitems", "v3")
 end
@@ -100,6 +109,16 @@ local function auth_encrypt(plain, key)
   return ivaes .. hmac.new(key, "sha256"):final(ivaes)
 end
 
+local function make_kxmsg(ephpk, peerpk) 
+  local shared1 = uECC:sharedsecret(ephpk, testserversk)
+  local key1 = string.sub(digest.new("sha256"):final(shared1), 1, 16)
+  eph2 = uECC:keygen()
+  local shared2 = uECC:sharedsecret(peerpk, eph2.sk)
+  local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
+  local msg = eph2.pk..hmac.new(key1, "sha256"):final(eph2.pk)
+  return key2, msg
+end
+
 local function make_authopmsg(operation, key, N1, N2)
   local t = {
     OP = operation,
@@ -118,8 +137,6 @@ local function safe_decode_load(dload)
   assert(#dload < 500, "device load too large")
   assert(not string.find(dload, "[^a-zA-Z0-9/%+=]"), "invalid base64 device load")
   dload = b64.decode(dload)
-  local loadlen = #dload
-  dload = string.sub(dload, 1, loadlen - (loadlen % 16))
   return dload
 end
 
@@ -137,12 +154,18 @@ local function authorize_client(clientid, deviceid, operation)
   return false
 end
 
-local function get_device_key(deviceid)
+local function get_device_pk(deviceid)
   return redis:call("get", "devkeys:"..deviceid)
 end
 
-local function record_authorization(ticket, N2, clientid, deviceid, operation)
-  redis:call("hmset", ticket, "N2", N2, "clientid", clientid, "deviceid", deviceid, "operation", operation)
+local function record_session(ticket, seskey, clientid, deviceid, operation)
+  redis:call("hmset", ticket, "seskey", seskey, "clientid", clientid, "deviceid", deviceid, "operation", operation)
+  redis:call("expire", ticket, "120")
+end
+
+
+local function record_N2_to_session(ticket, N2)
+  redis:call("hset", ticket, "N2", N2)
   redis:call("expire", ticket, "120")
 end
 
@@ -161,7 +184,7 @@ local function log_operation(td)
 end
 
 local function notarize_hash(hash)
-  -- to be implemented
+  print("Logger: Log notarization to be implemented")
 end
 
 -- thread that every 5 minutes saves a block of logs to disk and its hash on the blockchain
@@ -181,7 +204,7 @@ local function log_notarizer()
 end
 cq:wrap(log_notarizer)
 
-local function authorize_operation_handler(stream, res_headers)
+local function key_exchange_handler(stream, res_headers)
   local body = stream:get_body_as_string()
   if not body then return client_error(stream, res_headers) end
   local json = cjson.decode(body)
@@ -189,9 +212,9 @@ local function authorize_operation_handler(stream, res_headers)
   local clientid = json.client_id
   local clientpass = json.client_pass
   local deviceid = json.device_id
-  local operation = json.operation
   local deviceload = json.load
-  if not (clientid and deviceid and operation and deviceload and clientpass) then
+  local operation = json.operation
+  if not (clientid and deviceid and deviceload and clientpass) then
     return client_error(stream, res_headers)
   end
   if not authenticate_client(clientid, clientpass) then
@@ -205,14 +228,42 @@ local function authorize_operation_handler(stream, res_headers)
     return
   end
   local binload = safe_decode_load(deviceload)
-  local key = assert(get_device_key(deviceid))
-  local devjson = assert(cjson.decode(auth_decrypt(binload, key)))
+  binload = string.sub(binload, 1, 48)
+  local key = assert(get_device_pk(deviceid))
+  local ticket = string.format("%x", (string.unpack("l", rand.bytes(8))))
+  local seskey, msg = make_kxmsg(binload, key)
+  record_session(ticket, seskey, clientid, deviceid, operation)
+  local body = cjson.encode({ success = true, load = b64.encode(msg), ticket = ticket })
+  res_headers:append(":status", "200")
+  res_headers:append("content-type", "application/json")
+  assert(stream:write_headers(res_headers, false))
+  assert(stream:write_chunk(body, true))
+end
+
+local function authorize_operation_handler(stream, res_headers)
+  local body = stream:get_body_as_string()
+  if not body then return client_error(stream, res_headers) end
+  local json = cjson.decode(body)
+  if not json then return client_error(stream, res_headers) end
+  local ticket = json.ticket
+  local deviceload = json.load
+  if not (ticket and deviceload) then
+    return client_error(stream, res_headers)
+  end
+  local ticketdata = get_ticketdata(ticket)
+  if not ticketdata then
+    res_headers:upsert(":status", "403")
+    assert(stream:write_headers(res_headers, true))
+    return
+  end
+  local binload = safe_decode_load(deviceload)
+  binload = string.sub(binload, 1, #binload - (#binload % 16))
+  local devjson = assert(cjson.decode(auth_decrypt(binload, ticketdata.seskey)))
   local N1 = devjson.N1
   assert(N1)
-  local ticket = string.format("%x", (string.unpack("l", rand.bytes(8))))
   local N2 = string.format("%x", (string.unpack("l", rand.bytes(8))))
-  record_authorization(ticket, N2, clientid, deviceid, operation)
-  local aOP = make_authopmsg(operation, key, N1, N2)
+  record_N2_to_session(ticket, N2)
+  local aOP = make_authopmsg(ticketdata.operation, ticketdata.seskey, N1, N2)
   local body = cjson.encode({ success = true, load = aOP, ticket = ticket })
   res_headers:append(":status", "200")
   res_headers:append("content-type", "application/json")
@@ -237,8 +288,8 @@ local function result_handler(stream, res_headers)
     return
   end
   local binload = safe_decode_load(deviceload)
-  local key = get_device_key(ticketdata.deviceid)
-  local devjson = assert(cjson.decode(auth_decrypt(binload, key)))
+  binload = string.sub(binload, 1, #binload - (#binload % 16))
+  local devjson = assert(cjson.decode(auth_decrypt(binload, ticketdata.seskey)))
   local N2 = devjson.N2
   local RES = devjson.RES
   assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
@@ -269,7 +320,10 @@ local myserver =
                assert(stream:write_headers(res_headers, true))
                return
              end
-             if req_headers:get(":path") == "/authorize-operation" and
+             if req_headers:get(":path") == "/exchange" and
+             req_headers:get "content-type" == "application/json" then
+               return key_exchange_handler(stream, res_headers)
+             elseif req_headers:get(":path") == "/authorize-operation" and
              req_headers:get "content-type" == "application/json" then
                return authorize_operation_handler(stream, res_headers)
              elseif req_headers:get(":path") == "/result" and
