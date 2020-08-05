@@ -125,7 +125,7 @@ local function make_authopmsg(operation, key, N1, N2)
     N1 = N1,
     N2 = N2
   }
-  return b64.encode(auth_encrypt(cjson.encode(t), key))
+  return auth_encrypt(cjson.encode(t), key)
 end
 
 local function client_error(stream, res_headers)
@@ -158,14 +158,8 @@ local function get_device_pk(deviceid)
   return redis:call("get", "devkeys:"..deviceid)
 end
 
-local function record_session(ticket, seskey, clientid, deviceid, operation)
-  redis:call("hmset", ticket, "seskey", seskey, "clientid", clientid, "deviceid", deviceid, "operation", operation)
-  redis:call("expire", ticket, "120")
-end
-
-
-local function record_N2_to_session(ticket, N2)
-  redis:call("hset", ticket, "N2", N2)
+local function record_session(ticket, seskey, N2, clientid, deviceid, operation)
+  redis:call("hmset", ticket, "seskey", seskey, N2, "N2", "clientid", clientid, "deviceid", deviceid, "operation", operation)
   redis:call("expire", ticket, "120")
 end
 
@@ -204,7 +198,7 @@ local function log_notarizer()
 end
 cq:wrap(log_notarizer)
 
-local function key_exchange_handler(stream, res_headers)
+local function authorize_operation_handler(stream, res_headers)
   local body = stream:get_body_as_string()
   if not body then return client_error(stream, res_headers) end
   local json = cjson.decode(body)
@@ -231,40 +225,11 @@ local function key_exchange_handler(stream, res_headers)
   binload = string.sub(binload, 1, 48)
   local key = assert(get_device_pk(deviceid))
   local ticket = string.format("%x", (string.unpack("l", rand.bytes(8))))
-  local seskey, msg = make_kxmsg(binload, key)
-  record_session(ticket, seskey, clientid, deviceid, operation)
-  local body = cjson.encode({ success = true, load = b64.encode(msg), ticket = ticket })
-  res_headers:append(":status", "200")
-  res_headers:append("content-type", "application/json")
-  assert(stream:write_headers(res_headers, false))
-  assert(stream:write_chunk(body, true))
-end
-
-local function authorize_operation_handler(stream, res_headers)
-  local body = stream:get_body_as_string()
-  if not body then return client_error(stream, res_headers) end
-  local json = cjson.decode(body)
-  if not json then return client_error(stream, res_headers) end
-  local ticket = json.ticket
-  local deviceload = json.load
-  if not (ticket and deviceload) then
-    return client_error(stream, res_headers)
-  end
-  local ticketdata = get_ticketdata(ticket)
-  if not ticketdata then
-    res_headers:upsert(":status", "403")
-    assert(stream:write_headers(res_headers, true))
-    return
-  end
-  local binload = safe_decode_load(deviceload)
-  binload = string.sub(binload, 1, #binload - (#binload % 16))
-  local devjson = assert(cjson.decode(auth_decrypt(binload, ticketdata.seskey)))
-  local N1 = devjson.N1
-  assert(N1)
+  local seskey, kxmsg = make_kxmsg(binload, key)
   local N2 = string.format("%x", (string.unpack("l", rand.bytes(8))))
-  record_N2_to_session(ticket, N2)
-  local aOP = make_authopmsg(ticketdata.operation, ticketdata.seskey, N1, N2)
-  local body = cjson.encode({ success = true, load = aOP, ticket = ticket })
+  local aOP = make_authopmsg(operation, seskey, N2)
+  record_session(ticket, seskey, N2, clientid, deviceid, operation)
+  local body = cjson.encode({ success = true, load = b64.encode(kxmsg .. aOP), ticket = ticket })
   res_headers:append(":status", "200")
   res_headers:append("content-type", "application/json")
   assert(stream:write_headers(res_headers, false))
@@ -320,10 +285,7 @@ local myserver =
                assert(stream:write_headers(res_headers, true))
                return
              end
-             if req_headers:get(":path") == "/exchange" and
-             req_headers:get "content-type" == "application/json" then
-               return key_exchange_handler(stream, res_headers)
-             elseif req_headers:get(":path") == "/authorize-operation" and
+             if req_headers:get(":path") == "/authorize-operation" and
              req_headers:get "content-type" == "application/json" then
                return authorize_operation_handler(stream, res_headers)
              elseif req_headers:get(":path") == "/result" and
