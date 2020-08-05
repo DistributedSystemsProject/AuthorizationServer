@@ -87,19 +87,16 @@ end
 print("// Server answer:") print(body) print()
 local replyex = cjson.decode(body)
 local ticket = replyex.ticket
-local bload = b64.decode(replyex.load)
-local eph2pk = string.sub(bload, 1, 48)
-local ephhmac = string.sub(bload, 49, 80)
-assert(hmac.new(key1, "sha256"):final(eph2pk) == ephhmac, "exchange hmac does not correspond")
+local devjson = cjson.decode(auth_decrypt(safe_decode_load(replyex.load), key1))
+local eph2pk = string.sub(b64.decode(devjson.eph2pk), 1, 48)
+assert(devjson.OP == "unlock")
+
 local shared2 = uECC:sharedsecret(eph2pk, devicesk)
 local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
-local aOPlen = (#bload - 80) - ((#bload - 80) % 16)
-local reply1dev = cjson.decode(auth_decrypt(string.sub(bload,81,80+aOPlen), key2))
-assert(reply1dev.OP == "unlock")
 
 -- AFTER KEY EXCHANGE
 
-local bload = (b64.encode(auth_encrypt(cjson.encode{N2 = reply1dev.N2, RES=true}, key2)))
+local bload = (b64.encode(auth_encrypt(cjson.encode{RES=true}, key2)))
 local bodyt = {
   ticket = ticket,
   load = bload

@@ -109,21 +109,19 @@ local function auth_encrypt(plain, key)
   return ivaes .. hmac.new(key, "sha256"):final(ivaes)
 end
 
-local function make_kxmsg(ephpk, peerpk) 
+local function make_kx(ephpk, peerpk) 
   local shared1 = uECC:sharedsecret(ephpk, testserversk)
   local key1 = string.sub(digest.new("sha256"):final(shared1), 1, 16)
   eph2 = uECC:keygen()
   local shared2 = uECC:sharedsecret(peerpk, eph2.sk)
   local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
-  local msg = eph2.pk..hmac.new(key1, "sha256"):final(eph2.pk)
-  return key2, msg
+  return key1, eph2.pk, key2
 end
 
-local function make_authopmsg(operation, key, N1, N2)
+local function make_authopmsg(eph2pk, operation, key)
   local t = {
-    OP = operation,
-    N1 = N1,
-    N2 = N2
+    eph2pk = b64.encode(eph2pk),
+    OP = operation
   }
   return auth_encrypt(cjson.encode(t), key)
 end
@@ -158,8 +156,8 @@ local function get_device_pk(deviceid)
   return redis:call("get", "devkeys:"..deviceid)
 end
 
-local function record_session(ticket, seskey, N2, clientid, deviceid, operation)
-  redis:call("hmset", ticket, "seskey", seskey, N2, "N2", "clientid", clientid, "deviceid", deviceid, "operation", operation)
+local function record_session(ticket, seskey, clientid, deviceid, operation)
+  redis:call("hmset", ticket, "seskey", seskey, "clientid", clientid, "deviceid", deviceid, "operation", operation)
   redis:call("expire", ticket, "120")
 end
 
@@ -223,13 +221,12 @@ local function authorize_operation_handler(stream, res_headers)
   end
   local binload = safe_decode_load(deviceload)
   binload = string.sub(binload, 1, 48)
-  local key = assert(get_device_pk(deviceid))
+  local peerpk = assert(get_device_pk(deviceid))
+  local key1, eph2pk, key2 = make_kx(binload, peerpk)
   local ticket = string.format("%x", (string.unpack("l", rand.bytes(8))))
-  local seskey, kxmsg = make_kxmsg(binload, key)
-  local N2 = string.format("%x", (string.unpack("l", rand.bytes(8))))
-  local aOP = make_authopmsg(operation, seskey, N2)
-  record_session(ticket, seskey, N2, clientid, deviceid, operation)
-  local body = cjson.encode({ success = true, load = b64.encode(kxmsg .. aOP), ticket = ticket })
+  local aOP = make_authopmsg(eph2pk, operation, key1)
+  record_session(ticket, key2, clientid, deviceid, operation)
+  local body = cjson.encode({ success = true, load = b64.encode(aOP), ticket = ticket })
   res_headers:append(":status", "200")
   res_headers:append("content-type", "application/json")
   assert(stream:write_headers(res_headers, false))
@@ -255,9 +252,7 @@ local function result_handler(stream, res_headers)
   local binload = safe_decode_load(deviceload)
   binload = string.sub(binload, 1, #binload - (#binload % 16))
   local devjson = assert(cjson.decode(auth_decrypt(binload, ticketdata.seskey)))
-  local N2 = devjson.N2
   local RES = devjson.RES
-  assert(N2 == ticketdata.N2, "Invalid nonce received during confirmation")
   if RES then
     log_operation(ticketdata)
   end
