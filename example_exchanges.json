@@ -1,17 +1,11 @@
-// Key Exchange Request (/exchange):
-{"client_id":"1234567890client","client_pass":"clientpass","load":"EfrdPYQ0x+ne4aK5RVi1DedABasvKte02AVk4iwhdMDCqywd4jxkgnHth\/1l+iob","operation":"unlock","device_id":"1234567890device"}
+// Authorize Operation request (/authorize-operation):
+{"operation":"unlock","device_id":"1234567890device","load":"WyJdUrNbnjpP+Y0wzbhC7O9vQP5UIh5zj1kJNgs9iuXxzY2kw1L3A7Em9NNgH03w","client_id":"1234567890client","client_pass":"clientpass"}
 
 // Server answer:
-{"ticket":"d38e824fee193333","success":true,"load":"g6JLhBRYaka+6IjS\/gjEVwV406vgpvEt5eV7a6KG6wqnGJ9pGsW1ot5QqnbNuaI6Dy3JjafXVkMBihiFGYXhqvT0RR7tWcAAdQvqpf4jCYI="}
-
-// Authorize Operation Request (/authorize-operation):
-{"load":"YWFhYWFhYWFmZmZmZmZmZvo9aqZP9LbpsC8e2iU8HyC\/WRH41KQ457KbALBYXvqwkGsvZXzcEn\/Pdp7nTJ\/RXw==","ticket":"d38e824fee193333"}
-
-// Server answer:
-{"ticket":"d38e824fee193333","success":true,"load":"xZxkwz5T3mIarmAIgQQx\/CdYkMMqeplmHnGCJoNn7XDvcwaPFYLXxZqlwoXGPg1XmIwBZ2xC+pbOSJtHk5Naftrl4BIpMSV7ZtdRqjzINR2zozCMQfT10TSDUVPZfwseAjK0iP\/3oD6pKI5jVJn65Q=="}
+{"success":true,"load":"O0bMfktadszDeVUMfRZI\/fN3JRC7aZAdcaicZ8QA9jNj1OyWH+uP3pSFjPPIqSzC67qPDsRdHcLj6k++bxsmSGMgMnCoFnN379frSd3cV4zioqelloHPT4Q3+\/Wz\/a6UThi5hzr2tBMe7xQgI\/IoyBhIc\/Bxg8COYK7d5tu8eEGpwwLVWgbibQWXp6a7avmy","ticket":"832c36b6cabdb243"}
 
 // Send Result Request (/result):
-{"load":"YWFhYWFhYWFmZmZmZmZmZgdnV5OCK4iCFEh0wAKHdmeh3WaB7gMoP9T5hufGm3QAgUvYHUzTt2+UVzIjJvZo\/k1Y9gCuNMvGpxj47t8uAPWykZttO2QuzQW45OuhQfgg","ticket":"d38e824fee193333"}
+{"load":"YWFhYWFhYWFmZmZmZmZmZiLba8x1ygLFa77l4kJlHLdYXoPJ\/OGW0TCzPEItdcluwok6FYCD+H9QQBeiQ0mNJA==","ticket":"832c36b6cabdb243"}
 
 // Server answer:
 {"success":true}

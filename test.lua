@@ -67,10 +67,10 @@ local bodyt = {
     load = b64.encode(eph1.pk)
 }
 
-local req = request.new_from_uri(host .. "/exchange")
+local req = request.new_from_uri(host .. "/authorize-operation")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
-print("// Key Exchange Request:") print(cjson.encode(bodyt)) print()
+print("// Authorize Operation request (/authorize-operation):") print(cjson.encode(bodyt)) print()
 req:set_body(cjson.encode(bodyt))
 
 local headers, stream = req:go(req_timeout)
@@ -87,46 +87,16 @@ end
 print("// Server answer:") print(body) print()
 local replyex = cjson.decode(body)
 local ticket = replyex.ticket
-local bload = b64.decode(replyex.load)
-local eph2pk = string.sub(bload, 1, 48)
-local ephhmac = string.sub(bload, 49, 80)
-assert(hmac.new(key1, "sha256"):final(eph2pk) == ephhmac, "exchange hmac does not correspond")
+local devjson = cjson.decode(auth_decrypt(safe_decode_load(replyex.load), key1))
+local eph2pk = string.sub(b64.decode(devjson.eph2pk), 1, 48)
+assert(devjson.OP == "unlock")
+
 local shared2 = uECC:sharedsecret(eph2pk, devicesk)
 local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
 
 -- AFTER KEY EXCHANGE
 
-local N1 = "2389432"
-local bload = (b64.encode(auth_encrypt(cjson.encode{N1 = N1}, key2)))
-local bodyt = {
-  ticket = ticket,
-  load = bload
-}
-
-local req = request.new_from_uri(host .. "/authorize-operation")
-req.headers:upsert(":method", "POST")
-req.headers:append("content-type", "application/json")
-print("// Authorize Operation Request:") print(cjson.encode(bodyt)) print()
-req:set_body(cjson.encode(bodyt))
-
-local headers, stream = req:go(req_timeout)
-if headers == nil then
-	io.stderr:write(tostring(stream), "\n")
-	os.exit(1)
-end
-local body, err = stream:get_body_as_string()
-if not body and err then
-	io.stderr:write(tostring(err), "\n")
-	os.exit(1)
-end
-
-print("// Server answer:") print(body) print()
-local reply1 = cjson.decode(body)
-local reply1dev = cjson.decode(auth_decrypt(safe_decode_load(reply1.load), key2))
-assert(reply1dev.N1 == N1)
-assert(reply1dev.OP == "unlock")
-
-local bload = (b64.encode(auth_encrypt(cjson.encode{N2 = reply1dev.N2, RES=true}, key2)))
+local bload = (b64.encode(auth_encrypt(cjson.encode{RES=true}, key2)))
 local bodyt = {
   ticket = ticket,
   load = bload
@@ -135,7 +105,7 @@ local bodyt = {
 local req = request.new_from_uri(host .. "/result")
 req.headers:upsert(":method", "POST")
 req.headers:append("content-type", "application/json")
-print("// Send Result Request:") print(cjson.encode(bodyt)) print()
+print("// Send Result Request (/result):") print(cjson.encode(bodyt)) print()
 req:set_body(cjson.encode(bodyt))
 
 local headers, stream = req:go(req_timeout)
