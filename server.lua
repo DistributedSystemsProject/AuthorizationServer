@@ -120,7 +120,7 @@ end
 
 local function make_authopmsg(eph2pk, operation, key)
   local t = {
-    eph2pk = b64.encode(eph2pk),
+    PK = b64.encode(eph2pk),
     OP = operation
   }
   return auth_encrypt(cjson.encode(t), key)

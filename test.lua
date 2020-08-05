@@ -88,7 +88,7 @@ print("// Server answer:") print(body) print()
 local replyex = cjson.decode(body)
 local ticket = replyex.ticket
 local devjson = cjson.decode(auth_decrypt(safe_decode_load(replyex.load), key1))
-local eph2pk = string.sub(b64.decode(devjson.eph2pk), 1, 48)
+local eph2pk = string.sub(b64.decode(devjson.PK), 1, 48)
 assert(devjson.OP == "unlock")
 
 local shared2 = uECC:sharedsecret(eph2pk, devicesk)
