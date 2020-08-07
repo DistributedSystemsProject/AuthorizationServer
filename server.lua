@@ -110,8 +110,10 @@ local function auth_encrypt(plain, key)
 end
 
 local function make_kx(ephpk, peerpk) 
+  print("kp1.pk: ", peerpk:tohex())
   local shared1 = uECC:sharedsecret(ephpk, testserversk)
   local key1 = string.sub(digest.new("sha256"):final(shared1), 1, 16)
+  print("key1: ", key1:tohex())
   eph2 = uECC:keygen()
   local shared2 = uECC:sharedsecret(peerpk, eph2.sk)
   local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
