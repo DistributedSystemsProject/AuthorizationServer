@@ -21,15 +21,17 @@ Lua 5.3, with the following libraries:
 
 # Usage
 
-1) Start the server: `./server.lua`
+1) Start the server: `./server.lua` or with Docker (see below).
 
-2) Send an HTTPS POST to `/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
+2) Use the app https://github.com/DistributedSystemsProject/MobileApp or if you want to operate manually:
+
+- Send an HTTPS POST to `SERVER_ADDRESS/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
 `client_id`, `client_pass`, and `device_id` must be as in the example, `operation` can be `lock` or `unlock`.
 
 The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}`
 
-3) After you receive the ticket (cookie) plus the second load, send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
+3) After you receive the ticket plus the response, send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
 
 It is safe to regenerate the key, before using it.
 
