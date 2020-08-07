@@ -21,7 +21,7 @@ Lua 5.3, with the following libraries:
 
 2) Use the app https://github.com/DistributedSystemsProject/MobileApp or if you want to operate manually send an HTTPS POST to `SERVER_ADDRESS/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
-`client_id`, `client_pass`, and `device_id` must be as in the example, `operation` can be `lock` or `unlock`. The load has to be originated from secp192r1() ECC curve, creating a shared key from server public key and authenticated with SHA256 HMAC.
+`client_id`, `client_pass`, and `device_id` must be as in the example, `operation` can be `lock` or `unlock`. The load has to be originated from <strong>secp192r1()</strong> ECC curve, creating a shared key from server public key and authenticated with SHA256 HMAC.
 The device has to use the following keys:
 
 ```
