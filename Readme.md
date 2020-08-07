@@ -23,13 +23,13 @@ Lua 5.3, with the following libraries:
 
 # Usage
 
-1) Start the server: `./server.lua` or with Docker (see below).
+1) Start the server: `lua server.lua` or with Docker (see below). If you want to use HTTPS, place on the same directory fullchain.pem and privkey.pem (Let's Encrypt certificate files). If you don't want to use HTTPS, simply start the server in HTTP mode, with `lua server.lua dev`
 
 2) Use the app https://github.com/DistributedSystemsProject/MobileApp or if you want to operate manually send an HTTPS POST to `SERVER_ADDRESS/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
 `client_id`, `client_pass`, and `device_id` must be as in the example, `operation` can be `lock` or `unlock`. The load should be encrypted and authenticated with SHA256 HMAC, key: `{0x0c, 0xc0, 0x52, 0xf6, 0x7b, 0xbd, 0x05, 0x0e, 0x75, 0xac, 0x0d, 0x43, 0xf1, 0x0a, 0x8f, 0x35}`
 
-3) After you receive the ticket from the server plus the response from the device, send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
+3) After you receive the ticket from the server plus the response from the device, send another HTTPS POST, this time to `/result` like in the file `example_second_request.json`
 
 # Testing the server
 
