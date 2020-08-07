@@ -25,8 +25,6 @@ Lua 5.3, with the following libraries:
 
 3) After you receive the ticket from the server plus the response from the device, send another HTTP POST, this time to `/result` like in the file `example_second_request.json`
 
-It is safe to regenerate the key, before using it.
-
 # Testing the server
 
 It is possible to test the server with the file `test.lua`, it will go through the entire protocol and generate a log on the server.
