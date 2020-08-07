@@ -1,8 +1,7 @@
 # Authorization Server (ECC Version)
 
 The authorization server is used to authenticate the user to send operations to the Locker Device, according to this protocol.
-
-TODO: PROTOCOL IMAGE
+![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/ecc/Protocol.png)
 
 In the MASTER branch there is the version of the server, without the ECC key exchange: https://github.com/DistributedSystemsProject/AuthorizationServer/
 
