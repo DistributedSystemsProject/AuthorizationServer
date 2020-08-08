@@ -23,7 +23,7 @@ Lua 5.3, with the following libraries:
 
 # Usage
 
-1) Start the server: `lua server.lua` or with Docker (see below). If you want to use HTTPS, place on the same directory fullchain.pem and privkey.pem (Let's Encrypt certificate files). If you don't want to use HTTPS, simply start the server in HTTP mode, with `lua server.lua dev`.
+1) Start the server: `lua server.lua` or with Docker (see below). If you want to use HTTPS, place on the same directory the certificate files (at the moment it was tested with fullchain.pem and privkey.pem, Let's Encrypt certificate files). If you don't want to use HTTPS, simply start the server in HTTP mode, with `lua server.lua dev`.
 
 2) Use the app https://github.com/DistributedSystemsProject/MobileApp or if you want to operate manually send an HTTPS POST to `SERVER_ADDRESS/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
