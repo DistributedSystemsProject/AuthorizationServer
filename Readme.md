@@ -4,8 +4,8 @@ The authorization server is used to authenticate the user to send operations to 
 ![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/ECC/Protocol.png)
 
 - Device and Client are supposed to be already paired via Bluetooth
-- Esk,s and Esk,d are the shared secret of the server and the device, encrypted (AES 128-bit CBC, including HMAC SHA 256-bit)
-- pkS and pkD are the epheremal publick keys of the server and the device, needed to derive the shared secret
+- Ek1 and Ek2 are the shared secret of the server and the device, encrypted (AES 128-bit CBC, including HMAC SHA 256-bit)
+- eph1.pk and eph2.pk are the epheremal publick keys of the server and the device, needed to derive the shared secret
 - EKc,s (HTTPS connection, authorized through idClient and clientPassword)
 - Aop stands for Authorized Operation
 - Res is the final response from the device
