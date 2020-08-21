@@ -55,7 +55,7 @@ if redis:call("get", "testdbitems") ~= "v4" then
   redis:call("set", "clientpass:"..testclientid, testclientpass)
   redis:call("set", "devkeys:"..testdeviceid, testdevicepk)
   redis:call("sadd", "cldevops:"..testclientid..":"..testdeviceid, "lock", "unlock")
-  redis:call("set", "testdbitems", "v3")
+  redis:call("set", "testdbitems", "v4")
 end
 
 if usetls then -- setup TLS
@@ -114,7 +114,7 @@ local function make_kx(ephpk, peerpk)
   local shared1 = uECC:sharedsecret(ephpk, testserversk)
   local key1 = string.sub(digest.new("sha256"):final(shared1), 1, 16)
   print("key1: ", key1:tohex())
-  eph2 = uECC:keygen()
+  local eph2 = uECC:keygen()
   local shared2 = uECC:sharedsecret(peerpk, eph2.sk)
   local key2 = string.sub(digest.new("sha256"):final(shared2), 1, 16)
   return key1, eph2.pk, key2
