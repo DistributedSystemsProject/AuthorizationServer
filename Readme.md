@@ -4,8 +4,8 @@ The authorization server is used to authenticate the user to send operations to 
 ![Protocol Diagram](https://raw.githubusercontent.com/DistributedSystemsProject/AuthorizationServer/ECC/Protocol.png)
 
 - Device and Client are supposed to be already paired via Bluetooth
-- Esk,s and Esk,d are the shared secret of the server and the device, encrypted (AES 128-bit CBC, including HMAC SHA 256-bit)
-- pkS and pkD are the epheremal publick keys of the server and the device, needed to derive the shared secret
+- Ek1 and Ek2 are the shared secret of the server and the device, encrypted (AES 128-bit CBC, including HMAC SHA 256-bit)
+- eph1.pk and eph2.pk are the epheremal publick keys of the server and the device, needed to derive the shared secret
 - EKc,s (HTTPS connection, authorized through idClient and clientPassword)
 - Aop stands for Authorized Operation
 - Res is the final response from the device
@@ -23,7 +23,7 @@ Lua 5.3, with the following libraries:
 
 # Usage
 
-1) Start the server: `./server.lua` or with Docker (see below).
+1) Start the server: `./server.lua` or with Docker (see below). If you want to use HTTPS, place on the same directory the certificate files (at the moment it was tested with fullchain.pem and privkey.pem, Let's Encrypt certificate files). If you don't want to use HTTPS, simply start the server in HTTP mode, with `lua server.lua dev`.
 
 2) Use the app https://github.com/DistributedSystemsProject/MobileApp or if you want to operate manually send an HTTPS POST to `SERVER_ADDRESS/authorize-operation` on port 8888, header `content-type: application/json`, and a json body as in the file `example_first_request.json`.
 
